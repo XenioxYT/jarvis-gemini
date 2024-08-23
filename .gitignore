@@ -3,3 +3,11 @@ __pycache__/prompt.cpython-310.pyc
 example_audio.mp3
 test_audio1.ogg
 testing.py
+temp_audio/*
+__pycache__/*
+conversation_history.pkl
+google-creds.json
+output.mp3
+output.wav
+venv/*
+voice_recordings/*
