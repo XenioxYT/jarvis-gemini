@@ -23,8 +23,20 @@ class VoiceAssistant:
                 # Send audio to Gemini API
                 response = self.gemini_api.process_audio(audio_file, tts_engine=self.tts_engine)
                 # Response is already spoken by the TTS engine in a separate thread
+                self.tts_engine.speak(response, on_speech_end_callback=self.listen_for_follow_up)
             else:
                 print("No audio was recorded. Listening for wake word again.")
+
+    def listen_for_follow_up(self):
+        follow_up_file = self.wake_word_detector.listen_for_follow_up()
+        
+        if follow_up_file:
+            # Send follow-up audio to Gemini API
+            response = self.gemini_api.process_audio(follow_up_file, tts_engine=self.tts_engine)
+            # Response is already spoken by the TTS engine in a separate thread
+            self.tts_engine.speak(response, on_speech_end_callback=self.listen_for_follow_up)
+        else:
+            print("No follow-up speech detected. Listening for wake word again.")
 
     def interrupt(self):
         if self.is_speaking:

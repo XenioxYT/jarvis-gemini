@@ -48,7 +48,45 @@ class AudioRecorder:
             print("No speech detected.")
             return None
 
-        # Save the recorded audio to a WAV file
+        return self._save_audio(frames)
+
+    def listen_for_follow_up(self, initial_frames, silence_duration=1.5):
+        print("Listening for follow-up speech...")
+        
+        self.recorder.start()
+
+        frames = initial_frames
+        voice_probability_threshold = 0.75
+        silent_frames = 0
+        max_silent_frames = int(silence_duration * self.rate / self.cobra.frame_length)
+        
+        try:
+            while True:
+                pcm = self.recorder.read()
+                voice_probability = self.cobra.process(pcm)
+                
+                frames.extend(pcm)
+                
+                if voice_probability >= voice_probability_threshold:
+                    silent_frames = 0
+                else:
+                    silent_frames += 1
+                
+                if silent_frames >= max_silent_frames:
+                    break
+                
+        finally:
+            self.recorder.stop()
+
+        print("Finished follow-up recording.")
+
+        if not frames:
+            print("No follow-up speech detected.")
+            return None
+
+        return self._save_audio(frames)
+
+    def _save_audio(self, frames):
         os.makedirs("voice_recordings", exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S%f")
         wav_filename = os.path.join("voice_recordings", f"recording_{timestamp}.wav")

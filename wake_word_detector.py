@@ -43,6 +43,17 @@ class WakeWordDetector:
         finally:
             self.recorder.stop()
 
+    def listen_for_follow_up(self):
+        initial_frames = []
+        follow_up_file = self.audio_recorder.listen_for_follow_up(initial_frames, silence_duration=2.0)
+        
+        if follow_up_file:
+            print(f"Follow-up recording saved as {follow_up_file}")
+            return follow_up_file
+        else:
+            print("No follow-up speech detected.")
+            return None
+
     def __del__(self):
         if self.porcupine is not None:
             self.porcupine.delete()

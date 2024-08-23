@@ -25,9 +25,11 @@ class TTSEngine:
         self.playback_thread.start()
         self.temp_dir = "temp_audio"
         os.makedirs(self.temp_dir, exist_ok=True)
+        self.on_speech_end_callback = None
         print("TTSEngine initialized.")
 
-    def speak(self, text):
+    def speak(self, text, on_speech_end_callback=None):
+        self.on_speech_end_callback = on_speech_end_callback
         self.generation_queue.put(text)
 
     def _process_generation_queue(self):
@@ -44,12 +46,17 @@ class TTSEngine:
             success = self._play_audio(audio_file, text)
             self.is_speaking = False
             self.play_queue.task_done()
-            if success:
-                pass
-                # os.remove(audio_file)  # Clean up the temporary file
+            if success and self.on_speech_end_callback:
+                self.on_speech_end_callback()
+                self.on_speech_end_callback = None
 
     def _generate_audio(self, text):
         print(f"Converting text to speech: '{text}'")
+        
+        # Ensure text is a string
+        if not isinstance(text, str):
+            print(f"Error: Expected text to be a string but got {type(text)}")
+            return None
         
         # Generate a unique filename for this audio
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -69,10 +76,6 @@ class TTSEngine:
             audio_encoding=texttospeech.AudioEncoding.MP3,
             speaking_rate=1.10,
         )
-
-        # Add SSML tags for a cheerful tone
-        # ssml_text = f'<speak><prosody rate="1.15" pitch="+2st">{text}</prosody></speak>'
-        # synthesis_input = texttospeech.SynthesisInput(ssml=ssml_text)
 
         try:
             response = self.client.synthesize_speech(
