@@ -1,52 +1,34 @@
 #!/bin/bash
 
-# Function to show a spinner
-spinner() {
-    local pid=$!
-    local delay=0.1
-    local spinstr='|/-\'
-    while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
-    done
-    printf "    \b\b\b\b"
-}
-
 # Update and upgrade system packages
-echo "Updating and upgrading system packages..."
-sudo apt update && sudo apt upgrade -y & spinner
+sudo apt update && sudo apt upgrade -y
 
 # Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
     echo "Python 3 is not installed. Installing..."
-    sudo apt install -y python3 python3-pip python3-venv & spinner
+    sudo apt install -y python3 python3-pip python3-venv
 fi
 
 # Check if python is python3
 if ! command -v python &> /dev/null || [ "$(python --version 2>&1)" != "$(python3 --version 2>&1)" ]; then
     echo "Setting up 'python' to point to 'python3'..."
-    sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1 & spinner
+    sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 fi
 
-# Create and activate virtual environment
-echo "Creating and activating virtual environment..."
-python3 -m venv venv & spinner
-source venv/bin/activate
+# Create virtual environment
+python3 -m venv venv
+
+# Define the path to the virtual environment's pip
+VENV_PIP="$PWD/venv/bin/pip"
 
 # Upgrade pip
-echo "Upgrading pip..."
-pip install --upgrade pip & spinner
+$VENV_PIP install --upgrade pip
 
 # Install requirements
-echo "Installing requirements..."
-pip install -r requirements.txt & spinner
+$VENV_PIP install -r requirements.txt
 
 # Install additional requirements for web interface
-echo "Installing additional requirements for web interface..."
-pip install flask flask-socketio & spinner
+$VENV_PIP install flask flask-socketio
 
 # Create .env file if it doesn't exist
 if [ ! -f .env ]; then
@@ -60,7 +42,5 @@ if [ ! -f config.json ]; then
     echo "Created config.json file."
 fi
 
-# Start the web server within the virtual environment
-echo "Starting the web server..."
-source venv/bin/activate  # Ensure the venv is activated
-python web_server.py
+echo "Setup complete. To start the web server, run:"
+echo "source venv/bin/activate && python web_server.py"
