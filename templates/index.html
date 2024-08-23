@@ -3,89 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jarvis Gemini Management</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Jarvis Gemini Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-    <h1>Jarvis Gemini Management</h1>
-    
-    <h2>Configuration</h2>
-    <div id="config"></div>
-    <button onclick="saveConfig()">Save Configuration</button>
+    <h1>Jarvis Gemini Assistant</h1>
+    <button onclick="startAssistant()">Start</button>
+    <button onclick="stopAssistant()">Stop</button>
+    <button onclick="restartAssistant()">Restart</button>
+
+    <h2>Environment Variables</h2>
+    <div id="env-vars"></div>
 
     <h2>System Prompt</h2>
-    <textarea id="prompt" rows="10" cols="50"></textarea>
-    <button onclick="savePrompt()">Save Prompt</button>
+    <textarea id="system-prompt" rows="10" cols="50"></textarea>
+    <button onclick="updatePrompt()">Update Prompt</button>
 
-    <h2>Control</h2>
-    <button onclick="startMain()">Start</button>
-    <button onclick="stopMain()">Stop</button>
-    <button onclick="restartMain()">Restart</button>
+    <h2>Tools</h2>
+    <div id="tools"></div>
 
     <script>
-        const socket = io();
-
-        function loadConfig() {
-            $.get('/get_config', function(data) {
-                $('#config').html(JSON.stringify(data, null, 2));
-            });
+        // Add JavaScript functions to handle button clicks and API calls
+        function startAssistant() {
+            axios.post('/start').then(response => alert(response.data.status));
         }
 
-        function saveConfig() {
-            const config = JSON.parse($('#config').text());
-            $.ajax({
-                url: '/update_config',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(config),
-                success: function(response) {
-                    alert('Configuration saved successfully');
-                }
-            });
+        function stopAssistant() {
+            axios.post('/stop').then(response => alert(response.data.status));
         }
 
-        function loadPrompt() {
-            $.get('/get_prompt', function(data) {
-                $('#prompt').val(data.prompt);
-            });
+        function restartAssistant() {
+            axios.post('/restart').then(response => alert(response.data.status));
         }
 
-        function savePrompt() {
-            const prompt = $('#prompt').val();
-            $.ajax({
-                url: '/update_prompt',
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({prompt: prompt}),
-                success: function(response) {
-                    alert('Prompt saved successfully');
-                }
-            });
+        function updatePrompt() {
+            const prompt = document.getElementById('system-prompt').value;
+            axios.post('/update_prompt', { prompt }).then(response => alert(response.data.status));
         }
 
-        function startMain() {
-            socket.emit('start_main', (response) => {
-                alert(response.status);
-            });
+        function toggleTool(toolName, enabled) {
+            axios.post('/toggle_tool', { tool_name: toolName, enabled }).then(response => alert(response.data.status));
         }
 
-        function stopMain() {
-            socket.emit('stop_main', (response) => {
-                alert(response.status);
-            });
-        }
-
-        function restartMain() {
-            socket.emit('restart_main', (response) => {
-                alert(response.status);
-            });
-        }
-
-        $(document).ready(function() {
-            loadConfig();
-            loadPrompt();
-        });
+        // Add functions to load and display environment variables, system prompt, and tools
     </script>
 </body>
 </html>

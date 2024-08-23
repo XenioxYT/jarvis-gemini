@@ -48,6 +48,11 @@ class VoiceAssistant:
         assistant = VoiceAssistant()
         assistant.run()
 
+    def stop(self):
+        self.running = False
+        if self.is_speaking:
+            self.tts_engine.stop()
+
 if __name__ == "__main__":
     assistant = VoiceAssistant()
     assistant.run()
