@@ -45,7 +45,11 @@ def update_prompt():
 def start_main():
     global main_process
     if main_process is None or main_process.poll() is not None:
-        main_process = subprocess.Popen([sys.executable, 'main.py'])
+        # Get the path to the virtual environment's Python executable
+        venv_python = os.path.join(os.getcwd(), 'venv', 'bin', 'python')
+        
+        # Start the main.py script using the virtual environment's Python
+        main_process = subprocess.Popen([venv_python, 'main.py'])
         return {"status": "started"}
     return {"status": "already_running"}
 
