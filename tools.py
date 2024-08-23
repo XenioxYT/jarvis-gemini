@@ -7,6 +7,7 @@ import os
 import requests
 import datetime
 from google.oauth2.credentials import Credentials
+import json
 # import discord
 
 load_dotenv()
@@ -158,48 +159,118 @@ class Tools:
     #                                           orderBy='startTime').execute()
     #     return events_result.get('items', [])
 
-    # @staticmethod
-    # def get_news(category='general', country='us'):
-    #     """
-    #     Get top news headlines for a specified category and country.
-    #     Args:
-    #         category (str): News category (default: 'general').
-    #         country (str): Country code (default: 'us').
-    #     Returns:
-    #         list: A list of news articles.
-    #     """
-    #     NEWS_API_KEY = os.getenv('NEWS_API_KEY')
-    #     url = f"https://newsapi.org/v2/top-headlines?country={country}&category={category}&apiKey={NEWS_API_KEY}"
-    #     response = requests.get(url)
-    #     data = response.json()
-    #     return data['articles']
+    @staticmethod
+    def get_news(query: str = None, country: str = 'gb', limit: int = 5, source: str = 'bbc.com'):
+        """
+        Get news articles using the NewsData.io API.
+        Args:
+            query (str): The search query. If None, fetches top news. (default: None)
+            country (str): The country code (default: 'gb').
+            limit (int): The number of results to return (default: 5).
+            source (str): The source of the news (default: 'bbc.com') Either choose 'bbc.com' or 'news.google.com'.
+        Returns:
+            dict: A dictionary containing the news articles and metadata.
+        """
+        NEWS_API_KEY = os.getenv('NEWS_API_KEY')
+        base_url = "https://newsdata.io/api/1/latest"
+        
+        params = {
+            'apikey': NEWS_API_KEY,
+            'country': country,
+            'prioritydomain': 'top',
+            'size': limit,
+            'domainurl': source,
+            'language': 'en'
+        }
+        
+        if query:
+            params['q'] = query
+        
+        response = requests.get(base_url, params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            # Extract only title, link, and description from each result
+            simplified_results = [
+                {
+                    "title": article.get("title"),
+                    "link": article.get("link"),
+                    "description": article.get("description")
+                }
+                for article in data.get('results', [])[:limit]
+            ]
+            return {
+                "status": data.get("status"),
+                "totalResults": data.get("totalResults"),
+                "results": simplified_results
+            }
+        else:
+            return {"error": f"API request failed with status code {response.status_code}"}
 
-    # @staticmethod
-    # def send_email(to: str, subject: str, body: str):
-    #     """
-    #     Send an email (placeholder function).
-    #     Args:
-    #         to (str): Recipient email address.
-    #         subject (str): Email subject.
-    #         body (str): Email body.
-    #     Returns:
-    #         str: Confirmation message.
-    #     """
-    #     # Placeholder for email sending logic (e.g., using smtplib)
-    #     return f"Email sent to {to} with subject: {subject}"
-
-    # @staticmethod
-    # def get_directions(origin: str, destination: str):
-    #     """
-    #     Get directions between two locations (placeholder function).
-    #     Args:
-    #         origin (str): Starting location.
-    #         destination (str): Ending location.
-    #     Returns:
-    #         str: Directions information.
-    #     """
-    #     # Placeholder for Google Maps API call
-    #     return f"Directions from {origin} to {destination}"
+    @staticmethod
+    def get_directions(origin: str, destination: str, include_steps: bool = False, travel_mode: str = "DRIVE"):
+        """
+        Get directions between two locations using Google Maps Routes API.
+        Args:
+            origin (str): Starting location.
+            destination (str): Ending location.
+            include_steps (bool): Whether to include navigation steps in the output (default: False).
+            travel_mode (str): Mode of travel - "DRIVE", "WALK", "BICYCLE", or "TRANSIT" (default: "DRIVE").
+        Returns:
+            dict: Directions information including duration and distance, and optionally steps.
+        """
+        GOOGLE_CLOUD_API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY')
+        base_url = "https://routes.googleapis.com/directions/v2:computeRoutes"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_CLOUD_API_KEY,
+            "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction"
+        }
+        
+        # Validate and normalize travel mode
+        valid_modes = {"DRIVE", "WALK", "BICYCLE", "TRANSIT"}
+        travel_mode = travel_mode.upper()
+        if travel_mode not in valid_modes:
+            return {"error": f"Invalid travel mode. Choose from {', '.join(valid_modes)}."}
+        
+        data = {
+            "origin": {"address": origin},
+            "destination": {"address": destination},
+            "travelMode": travel_mode,
+            "routingPreference": "TRAFFIC_AWARE",
+            "computeAlternativeRoutes": False,
+            "languageCode": "en-US",
+            "units": "IMPERIAL",
+            "routeModifiers": {
+                "avoidTolls": True
+            }
+        }
+        
+        response = requests.post(base_url, headers=headers, data=json.dumps(data))
+        
+        if response.status_code == 200:
+            result = response.json()
+            if 'routes' in result and result['routes']:
+                route = result['routes'][0]
+                output = {
+                    "duration": route.get('duration', ''),
+                    "distance": f"{route.get('distanceMeters', 0) / 1609.34:.2f} miles"
+                }
+                
+                if include_steps:
+                    steps = []
+                    for leg in route.get('legs', []):
+                        for step in leg.get('steps', []):
+                            if 'navigationInstruction' in step:
+                                steps.append(step['navigationInstruction'].get('instructions', ''))
+                    output["steps"] = steps
+                
+                return output
+            else:
+                return {"error": "No routes found"}
+        else:
+            return {"error": f"API request failed with status code {response.status_code}"}
 
     # @staticmethod
     # def check_flight_status(flight_number: str):
