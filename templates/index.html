@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarvis Gemini Management</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Jarvis Gemini Management</h1>
+    
+    <h2>Configuration</h2>
+    <div id="config"></div>
+    <button onclick="saveConfig()">Save Configuration</button>
+
+    <h2>System Prompt</h2>
+    <textarea id="prompt" rows="10" cols="50"></textarea>
+    <button onclick="savePrompt()">Save Prompt</button>
+
+    <h2>Control</h2>
+    <button onclick="startMain()">Start</button>
+    <button onclick="stopMain()">Stop</button>
+    <button onclick="restartMain()">Restart</button>
+
+    <script>
+        const socket = io();
+
+        function loadConfig() {
+            $.get('/get_config', function(data) {
+                $('#config').html(JSON.stringify(data, null, 2));
+            });
+        }
+
+        function saveConfig() {
+            const config = JSON.parse($('#config').text());
+            $.ajax({
+                url: '/update_config',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(config),
+                success: function(response) {
+                    alert('Configuration saved successfully');
+                }
+            });
+        }
+
+        function loadPrompt() {
+            $.get('/get_prompt', function(data) {
+                $('#prompt').val(data.prompt);
+            });
+        }
+
+        function savePrompt() {
+            const prompt = $('#prompt').val();
+            $.ajax({
+                url: '/update_prompt',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({prompt: prompt}),
+                success: function(response) {
+                    alert('Prompt saved successfully');
+                }
+            });
+        }
+
+        function startMain() {
+            socket.emit('start_main', (response) => {
+                alert(response.status);
+            });
+        }
+
+        function stopMain() {
+            socket.emit('stop_main', (response) => {
+                alert(response.status);
+            });
+        }
+
+        function restartMain() {
+            socket.emit('restart_main', (response) => {
+                alert(response.status);
+            });
+        }
+
+        $(document).ready(function() {
+            loadConfig();
+            loadPrompt();
+        });
+    </script>
+</body>
+</html>
