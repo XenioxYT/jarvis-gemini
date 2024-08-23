@@ -3,19 +3,13 @@ import os
 import json
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
+import sys
 
 app = Flask(__name__)
 socketio = SocketIO(app)
 
 # Global variable to store the subprocess
 main_process = None
-
-# Path to the virtual environment
-venv_path = os.path.join(os.getcwd(), 'venv')
-venv_activate = os.path.join(venv_path, 'bin', 'activate')
-
-def run_in_venv(command):
-    return f'source {venv_activate} && {command}'
 
 @app.route('/')
 def index():
@@ -51,8 +45,7 @@ def update_prompt():
 def start_main():
     global main_process
     if main_process is None or main_process.poll() is not None:
-        cmd = run_in_venv('python main.py')
-        main_process = subprocess.Popen(cmd, shell=True, executable='/bin/bash')
+        main_process = subprocess.Popen([sys.executable, 'main.py'])
         return {"status": "started"}
     return {"status": "already_running"}
 
