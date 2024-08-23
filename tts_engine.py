@@ -28,7 +28,10 @@ class TTSEngine:
         print("TTSEngine initialized.")
 
     def speak(self, text):
-        self.generation_queue.put(text)
+        if isinstance(text, str) and text.strip():
+            self.generation_queue.put(text)
+        else:
+            print("Error: Invalid or empty text input for TTS.")
 
     def _process_generation_queue(self):
         while True:
