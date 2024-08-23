@@ -7,28 +7,23 @@ Once this text response is generated, it will be processed for tool use, and the
 
 If tools are used, the code will process the tool that has been used, and return the data back to the model to gather another response.
 
-
-
 ## Speed notes
 - Using gemini api is faster than using openai api due to having to transcribe the audio first (~50% faster)
 
 ##  General notes
 - Tools for:
     - Setting timers 
-    - Reading calendar -- using google calendar api
-    - Getting weather -- using openweathermap api
-    - Getting news -- using google news api
-    - Controlling smart home devices (e.g., lights, thermostat) -- using home assistant api
+    - Reading calendar
+    - Getting weather
+    - Getting news
+    - Controlling smart home devices (e.g., lights, thermostat)
     - Managing to-do lists or reminders
-    - Performing web searches -- using google search api
+    <!-- - Performing web searches -->
     - Sending messages or emails
     - Playing music or podcasts -- workaround by using youtube dl?
     - Setting alarms
-    - Providing directions or traffic information -- using google maps api
-    - Answering general knowledge questions -- already done using LLM
-    - Performing calculations or unit conversions -- already done using LLM
-    - Translating languages -- already done using LLM
-    - Checking flight status -- using flight api
+    - Providing directions or traffic information
+    - Checking flight status
     - Send messages to phone using discord api (for example, a longer message can be sent using a tool call)
 
 ## System prompt
@@ -75,4 +70,5 @@ PERSONALITY TRAITS:
 ALWAYS aim to provide helpful, accurate information while maintaining a natural conversational flow. If a user request is unclear, ask for clarification. If you cannot complete a task, explain why and offer alternatives if possible.
 Remember, your responses will ONLY be heard, not read. Focus on clear, concise communication suitable for voice interaction. Avoid long, complex sentences and prioritize easy-to-follow spoken language.
 
-
+## Bugs
+- MP3 Error playing audio: music_drmp3: corrupt mp3 file (bad tags). Sometimes happens after a tool call. No idea why. Only solution right now is to get another TTS audio file using the same text.

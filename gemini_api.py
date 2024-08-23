@@ -1,148 +1,200 @@
-import pathlib
-import google.generativeai as genai
-from dotenv import load_dotenv
-from prompt import system_prompt
 import os
+import json
+import pathlib
+import time
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from prompt import system_prompt
+from dotenv import load_dotenv
+import pickle
+import random
+import threading
+from tools import Tools
+
+load_dotenv()
+
+MAX_RETRIES = 2
+RETRY_DELAY = 3
 
 class GeminiAPI:
     def __init__(self):
-        load_dotenv()
-        self.client = genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel("gemini-1.5-flash-latest")
-        pass
+        print("Initializing GeminiAPI...")
+        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+        self.history_file = 'conversation_history.pkl'
+        self._load_system_prompt()
+        self._create_model()
+        self.max_history_length = 15  # Set the maximum number of messages to keep
+        print("GeminiAPI initialized.")
 
-    def process_audio(self, audio_file):
-        # Send audio to Gemini API and get text response
-        pass
+    def _load_system_prompt(self):
+        with open('prompt.py', 'r') as f:
+            exec(f.read())
+        self.system_prompt = system_prompt
 
-
-def test_function(test=False):
-    """Set a test function to test the gemini api
-
-    Args:
-        test (bool, optional): Defaults to False.
-    """
-    if test:
-        return "This works"
-    else:
-        return "This does not work"
-
-# example function to call the gemini api with audio file:
-import time
-
-def process_audio_demo():
-    load_dotenv()
-    
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    instructions = "You are a helpful assistant. Keep your responses concise and to the point."
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest", system_instruction=system_prompt)
-    
-    start_time = time.time()
-    
-    response = model.generate_content([
-        {
-            "mime_type": "audio/ogg",
-            "data": pathlib.Path("test_audio1.ogg").read_bytes()
-        }],
-        tools=[
-            {
-                "function_declarations": [
-                    {
-                        "name": "test_function",
-                        "description": "A test function that prints 'This works' if the input is True",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "test": {
-                                    "type": "boolean",
-                                    "description": "Boolean input for the test function"
-                                }
-                            },
-                            "required": ["test"]
-                        }
-                    }
-                ]
-            },
-        ]
-    )
-    
-    print(response)
-    # Process and print the response parts in order
-    print("Response parts:")
-    for part in response.parts:
-        if part.text:
-            # Print text content
-            print(f"Text: {part.text.strip()}")
-        elif hasattr(part, 'function_call'):
-            # Print function call details
-            fn = part.function_call
-            print(f"Function Call: {fn.name}")
-            # Convert MapComposite to a regular dictionary
-            args_dict = dict(fn.args)
-            print(f"Arguments: {args_dict}")
-            
-            # Execute the function
-            if fn.name == "test_function":
-                print("Function output: " + test_function(**args_dict))
-        else:
-            # Handle any unexpected part types
-            print(f"Unknown part type: {type(part)}")
-        print("---")
-    
-    end_time = time.time()
-    
-    print(f"Processing time: {end_time - start_time:.2f} seconds")
-
-process_audio_demo()
-
-
-"""
-GenerateContentResponse(
-    done=True,
-    iterator=None,
-    result=protos.GenerateContentResponse({
-      "candidates": [
-        {
-          "content": {
-            "parts": [
-              {
-                "function_call": {
-                  "name": "test_function",
-                  "args": {
-                    "test": true
-                  }
-                }
-              }
-            ],
-            "role": "model"
-          },
-          "finish_reason": "STOP",
-          "index": 0,
-          "safety_ratings": [
-            {
-              "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-              "probability": "NEGLIGIBLE"
-            },
-            {
-              "category": "HARM_CATEGORY_HATE_SPEECH",
-              "probability": "NEGLIGIBLE"
-            },
-            {
-              "category": "HARM_CATEGORY_HARASSMENT",
-              "probability": "NEGLIGIBLE"
-            },
-            {
-              "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              "probability": "NEGLIGIBLE"
-            }
-          ]
+    def _create_model(self):
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": 4096,
+            "response_mime_type": "text/plain",
         }
-      ],
-      "usage_metadata": {
-        "prompt_token_count": 73,
-        "candidates_token_count": 14,
-        "total_token_count": 87
-      }
-    }),
-)
-"""
+        
+        safety_settings = {
+            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        }
+
+        self.model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash-latest",
+            generation_config=generation_config,
+            system_instruction=self.system_prompt,
+            safety_settings=safety_settings,
+            tools=Tools.get_available_tools()
+        )
+
+    def test_function(self, test: bool):
+        if test:
+            return "This works"
+        else:
+            return "This does not work"
+        
+    def get_weather(self, city: str):
+        time.sleep(3)
+        return "The weather in " + city + " is " + str(random.randint(10, 30)) + " degrees celcius"
+
+    def process_audio(self, audio_file, tts_engine=None):
+        return self.generate_response(audio_file, input_type="audio", tts_engine=tts_engine)
+    
+    def process_text(self, text, tts_engine=None):
+        return self.generate_response(text, input_type="text", tts_engine=tts_engine)
+
+    def generate_response(self, input_data, input_type="text", tts_engine=None):
+        # Load conversation history from file
+        if os.path.exists(self.history_file):
+            with open(self.history_file, 'rb') as f:
+                history = pickle.load(f)
+        else:
+            history = []
+
+        # Trim history to keep only the last 20 messages (or less if there aren't 20 yet)
+        if len(history) > self.max_history_length:
+            history = history[-self.max_history_length:]
+
+        # Start chat session with system prompt and trimmed history
+        chat_session = self.model.start_chat(history=history)
+
+        # Prepare input based on type
+        if input_type == "audio":
+            content = [
+                {
+                    "mime_type": "audio/wav",
+                    "data": pathlib.Path(input_data).read_bytes()
+                }
+            ]
+        else:
+            content = input_data
+
+        # Send message and process response
+        try:
+            response = chat_session.send_message(content)
+            total_tokens = response.usage_metadata.total_token_count
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            
+            for retry in range(MAX_RETRIES):
+                print(f"Retrying ({retry + 1}/{MAX_RETRIES})...")
+                time.sleep(RETRY_DELAY)
+                
+                try:
+                    response = chat_session.send_message(content)
+                    total_tokens = response.usage_metadata.total_token_count
+                    break  # Break out of the retry loop if successful
+                except Exception as e:
+                    print(f"Error generating response during retry {retry + 1}: {str(e)}")
+            
+            else:  # Execute if the loop completes without breaking
+                print("Max retries reached. Setting response to 'there was an error'.")
+                response = genai.protos.ChatResponse(
+                    parts=[genai.protos.Part(text="It seems there was an error, please try again later.")]
+                )
+                total_tokens = 0
+
+        print("_" * 100)
+        print(f"Total token count: {total_tokens}")
+        print("_" * 100)
+        
+        chat_local_history = []
+
+        def process_part(part):
+            if part.text:
+                chat_local_history.append(part.text.strip())
+                
+                # Send the text to the TTS engine in a separate thread
+                if tts_engine:
+                    # Remove symbols that TTS would read out as full characters
+                    cleaned_text = part.text.strip()
+                    for symbol in ['*', '#', '@', '^', '~', '`', '|']:
+                        cleaned_text = cleaned_text.replace(symbol, '')
+                    
+                    # Remove emojis
+                    import re
+                    emoji_pattern = re.compile("["
+                        u"\U0001F600-\U0001F64F"  # emoticons
+                        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                        u"\U00002702-\U000027B0"
+                        u"\U000024C2-\U0001F251"
+                        "]+", flags=re.UNICODE)
+                    cleaned_text = emoji_pattern.sub(r'', cleaned_text)
+                    
+                    # Remove extra whitespace
+                    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+                    
+                    print(cleaned_text)
+                    threading.Thread(target=tts_engine.speak, args=(cleaned_text,)).start()
+                    
+            elif hasattr(part, 'function_call'):
+                fn = part.function_call
+                args_dict = dict(fn.args)
+                print(f"Function call: {fn.name} with arguments: {args_dict}")
+                result = Tools.call_function(fn.name, **args_dict)
+                print(f"Function output: {result}")
+                
+                function_responses.append(genai.protos.Part(
+                    function_response=genai.protos.FunctionResponse(
+                        name=fn.name,
+                        response={'result': result}
+                    )
+                ))
+
+        while True:
+            function_responses = []
+            for part in response.parts:
+                process_part(part)
+
+            if function_responses:
+                # Send all function responses back to the model
+                response = chat_session.send_message(
+                    genai.protos.Content(parts=function_responses)
+                )
+            else:
+                # If no function calls were made, exit the loop
+                break
+
+        # Save updated history using chat_session.history
+        with open(self.history_file, 'wb') as f:
+            pickle.dump(chat_session.history[-self.max_history_length:], f)
+
+        return chat_local_history
+    
+def test_gemini_api():
+    gemini_api = GeminiAPI()
+    response = gemini_api.generate_response("Tell me the weather in portsmouth and london and compare the two")
+    print(response)
+
+if __name__ == "__main__":
+    test_gemini_api()
