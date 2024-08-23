@@ -24,7 +24,7 @@ install_packages() {
 # Create the virtual environment and install specified packages
 create_venv() {
     echo "Creating Python virtual environment for Jarvis Gemini Assistant..."
-    python3 -m venv "$VENV_PATH"
+    python -m venv "$VENV_PATH"
     activate_venv
     install_packages
     echo "Installation completed."
