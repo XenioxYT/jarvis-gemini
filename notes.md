@@ -71,4 +71,11 @@ ALWAYS aim to provide helpful, accurate information while maintaining a natural 
 Remember, your responses will ONLY be heard, not read. Focus on clear, concise communication suitable for voice interaction. Avoid long, complex sentences and prioritize easy-to-follow spoken language.
 
 ## Bugs
-- MP3 Error playing audio: music_drmp3: corrupt mp3 file (bad tags). Sometimes happens after a tool call. No idea why. Only solution right now is to get another TTS audio file using the same text.
+>- MP3 Error playing audio: music_drmp3: corrupt mp3 file (bad tags). Sometimes happens after a tool call. No idea why. Only solution right now is to get another TTS audio file using the same text.
+
+Potentially fixed: Removing "null" text from the response before playing the audio.
+
+# Features I'd like to add
+
+- Follow up questions (infinite loop until no speech is detected)
+- More tools
