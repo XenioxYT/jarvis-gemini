@@ -23,7 +23,7 @@ class GeminiAPI:
         self.history_file = 'conversation_history.pkl'
         self._load_system_prompt()
         self._create_model()
-        self.max_history_length = 15  # Set the maximum number of messages to keep
+        self.max_history_length = 13  # Set the maximum number of messages to keep
         print("GeminiAPI initialized.")
 
     def _load_system_prompt(self):
@@ -48,7 +48,7 @@ class GeminiAPI:
         }
 
         self.model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-latest",
+            model_name="gemini-1.5-flash",
             generation_config=generation_config,
             system_instruction=self.system_prompt,
             safety_settings=safety_settings,
@@ -193,7 +193,7 @@ class GeminiAPI:
     
 def test_gemini_api():
     gemini_api = GeminiAPI()
-    response = gemini_api.generate_response("Tell me the weather in portsmouth and london and compare the two")
+    response = gemini_api.generate_response("what is fortnite?")
     print(response)
 
 if __name__ == "__main__":
