@@ -1,5 +1,4 @@
-import time
-import random
+
 import inspect
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
@@ -8,24 +7,14 @@ import requests
 import datetime
 from google.oauth2.credentials import Credentials
 import json
-# import discord
+from datetime import datetime
+from fuzzywuzzy import fuzz
+import discord
+import asyncio
 
 load_dotenv()
 
 class Tools:
-    @staticmethod
-    def test_function(test: bool):
-        """
-        A simple test function to check if the function calling system works.
-        Args:
-            test (bool): A boolean value to determine the return message.
-        Returns:
-            str: A message indicating whether the function works or not.
-        """
-        if test:
-            return "This works"
-        else:
-            return "This does not work"
     
     @staticmethod
     def get_weather(city: str, forecast_type: str = 'current', time_range: int = 3):
@@ -142,32 +131,12 @@ class Tools:
         
         return results
 
-    # @staticmethod
-    # def get_calendar_events(days=7):
-    #     """
-    #     Get calendar events for the next specified number of days.
-    #     Args:
-    #         days (int): Number of days to fetch events for (default: 7).
-    #     Returns:
-    #         list: A list of calendar events.
-    #     """
-    #     GOOGLE_CALENDAR_CREDS = Credentials.from_authorized_user_file('path/to/credentials.json', ['https://www.googleapis.com/auth/calendar.readonly'])
-    #     service = build('calendar', 'v3', credentials=GOOGLE_CALENDAR_CREDS)
-    #     now = datetime.datetime.utcnow().isoformat() + 'Z'
-    #     events_result = service.events().list(calendarId='primary', timeMin=now,
-    #                                           maxResults=10, singleEvents=True,
-    #                                           orderBy='startTime').execute()
-    #     return events_result.get('items', [])
-
     @staticmethod
-    def get_news(query: str = None, country: str = 'gb', limit: int = 5, source: str = 'bbc.com'):
+    def get_news(query: str):
         """
         Get news articles using the NewsData.io API.
         Args:
-            query (str): The search query. If None, fetches top news. (default: None)
-            country (str): The country code (default: 'gb').
-            limit (int): The number of results to return (default: 5).
-            source (str): The source of the news (default: 'bbc.com') Either choose 'bbc.com' or 'news.google.com'.
+            query (str): The search query. If not provided the top news is fetched. (default: None)
         Returns:
             dict: A dictionary containing the news articles and metadata.
         """
@@ -176,10 +145,10 @@ class Tools:
         
         params = {
             'apikey': NEWS_API_KEY,
-            'country': country,
+            'country': "gb",
             'prioritydomain': 'top',
-            'size': limit,
-            'domainurl': source,
+            'size': 5,
+            'domainurl': "bbc.com",
             'language': 'en'
         }
         
@@ -197,7 +166,7 @@ class Tools:
                     "link": article.get("link"),
                     "description": article.get("description")
                 }
-                for article in data.get('results', [])[:limit]
+                for article in data.get('results', [])[:5]
             ]
             return {
                 "status": data.get("status"),
@@ -208,7 +177,7 @@ class Tools:
             return {"error": f"API request failed with status code {response.status_code}"}
 
     @staticmethod
-    def get_directions(origin: str, destination: str, include_steps: bool = False, travel_mode: str = "DRIVE"):
+    def get_directions(origin: str, destination: str, travel_mode: str = "DRIVE"):
         """
         Get directions between two locations using Google Maps Routes API.
         Args:
@@ -228,6 +197,16 @@ class Tools:
             "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.legs.steps.navigationInstruction"
         }
         
+        def get_top_result_address(query):
+            place_info = Tools.get_place_information(query)
+            if place_info.get("status") == "OK" and place_info.get("results"):
+                return place_info["results"][0]["address"]
+            return query  # Return original query if no results found
+
+        # Get the top result addresses for origin and destination
+        origin_address = get_top_result_address(origin)
+        destination_address = get_top_result_address(destination)
+        
         # Validate and normalize travel mode
         valid_modes = {"DRIVE", "WALK", "BICYCLE", "TRANSIT"}
         travel_mode = travel_mode.upper()
@@ -235,17 +214,19 @@ class Tools:
             return {"error": f"Invalid travel mode. Choose from {', '.join(valid_modes)}."}
         
         data = {
-            "origin": {"address": origin},
-            "destination": {"address": destination},
+            "origin": {"address": origin_address},
+            "destination": {"address": destination_address},
             "travelMode": travel_mode,
-            "routingPreference": "TRAFFIC_AWARE",
             "computeAlternativeRoutes": False,
             "languageCode": "en-US",
-            "units": "IMPERIAL",
-            "routeModifiers": {
+            "units": "IMPERIAL"
+        }
+
+        if travel_mode == "DRIVE":
+            data["routingPreference"] = "TRAFFIC_AWARE"
+            data["routeModifiers"] = {
                 "avoidTolls": True
             }
-        }
         
         response = requests.post(base_url, headers=headers, data=json.dumps(data))
         
@@ -253,18 +234,23 @@ class Tools:
             result = response.json()
             if 'routes' in result and result['routes']:
                 route = result['routes'][0]
+                duration_seconds = int(route.get('duration', '0').rstrip('s'))
+                hours, remainder = divmod(duration_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m {seconds}s"
                 output = {
-                    "duration": route.get('duration', ''),
+                    "origin": origin_address,
+                    "destination": destination_address,
+                    "duration": duration_str,
                     "distance": f"{route.get('distanceMeters', 0) / 1609.34:.2f} miles"
                 }
-                
-                if include_steps:
-                    steps = []
-                    for leg in route.get('legs', []):
-                        for step in leg.get('steps', []):
-                            if 'navigationInstruction' in step:
-                                steps.append(step['navigationInstruction'].get('instructions', ''))
-                    output["steps"] = steps
+
+                steps = []
+                for leg in route.get('legs', []):
+                    for step in leg.get('steps', []):
+                        if 'navigationInstruction' in step:
+                            steps.append(step['navigationInstruction'].get('instructions', ''))
+                output["steps"] = steps
                 
                 return output
             else:
@@ -272,39 +258,74 @@ class Tools:
         else:
             return {"error": f"API request failed with status code {response.status_code}"}
 
-    # @staticmethod
-    # def check_flight_status(flight_number: str):
-    #     """
-    #     Check the status of a flight (placeholder function).
-    #     Args:
-    #         flight_number (str): The flight number to check.
-    #     Returns:
-    #         str: Flight status information.
-    #     """
-    #     # Placeholder for flight status API call
-    #     return f"Status for flight {flight_number}: On time"
+    @staticmethod
+    async def send_discord_message(user_id: int, message: str):
+        """
+        Send a direct message to a Discord user asynchronously as an embed.
+        Args:
+            user_id (int): The ID of the Discord user.
+            message (str): The message to send.
+        Returns:
+            str: Confirmation message.
+        """
+        DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
+        intents = discord.Intents.default()
+        intents.message_content = True
+        client = discord.Client(intents=intents)
 
-    # @staticmethod
-    # def send_discord_message(channel_id: int, message: str):
-    #     """
-    #     Send a message to a Discord channel.
-    #     Args:
-    #         channel_id (int): The ID of the Discord channel.
-    #         message (str): The message to send.
-    #     Returns:
-    #         str: Confirmation message.
-    #     """
-    #     DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-    #     client = discord.Client()
+        @client.event
+        async def on_ready():
+            try:
+                user = await client.fetch_user(user_id)
+                embed = discord.Embed(
+                    description=message,
+                    color=discord.Color.from_rgb(100, 200, 200)  # Light bluey-green color
+                )
+                await user.send(embed=embed)
+                print(f"Message sent to user {user_id}")
+            except discord.errors.NotFound:
+                print(f"User {user_id} not found")
+            except discord.errors.Forbidden:
+                print(f"Cannot send DM to user {user_id}")
+            finally:
+                await client.close()
 
-    #     @client.event
-    #     async def on_ready():
-    #         channel = client.get_channel(channel_id)
-    #         await channel.send(message)
-    #         await client.close()
+        await client.start(DISCORD_BOT_TOKEN)
+        return f"Message sent to Discord user {user_id}"
 
-    #     client.run(DISCORD_BOT_TOKEN)
-    #     return f"Message sent to Discord channel {channel_id}"
+    @staticmethod
+    def send_message_to_phone(user_id: str, message: str):
+        """
+        Send a text message to the user. ALWAYS include markdown formatting in this message.
+        This message can be longer than spoken messages.
+        Make sure to get all required information before sending the message.
+
+        Args:
+            user_id (str): The ID of the Discord user to send the message to.
+            message (str): The content of the message to be sent. Will only send anything in this field. Use Discord markdown.
+
+        Returns:
+            str: A confirmation message indicating that the message was sent.
+        """
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If we're already in an event loop, create a new one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Ensure user_id is an integer
+        # user_id_int = int(user_id)
+        user_id_int = 279718966543384578
+
+        # Replace double-escaped newlines with actual newlines
+        message = message.replace('\\\\n', '\n')
+        # Replace single-escaped newlines with actual newlines (in case they occur)
+        message = message.replace('\\n', '\n')
+        
+        result = loop.run_until_complete(Tools.send_discord_message(user_id_int, message))
+        if not loop.is_running():
+            loop.close()
+        return result
 
     @staticmethod
     def get_place_information(query: str, open_now: bool = False):
@@ -350,6 +371,70 @@ class Tools:
             }
         else:
             return {"error": f"API request failed with status code {response.status_code}"}
+        
+    @staticmethod
+    def take_notes(notes: str = None, search: bool = False, query: str = None):
+        """
+        Take notes or search existing notes.
+        Args:
+            notes (str): The notes to take (if None, assumes search mode).
+            search (bool): Whether to search existing notes.
+            query (str): The search query (for text or date).
+        Returns:
+            str: Confirmation message or search results.
+        """
+        notes_file = "user_notes.json"
+        
+        # Ensure the JSON file exists
+        if not os.path.exists(notes_file):
+            with open(notes_file, "w") as f:
+                json.dump([], f)
+        
+        if not search:
+            # Taking a new note
+            if not notes:
+                return "Error: No notes provided to save."
+            
+            timestamp = datetime.now().isoformat()
+            new_note = {"date": timestamp, "content": notes}
+            
+            with open(notes_file, "r+") as f:
+                data = json.load(f)
+                data.append(new_note)
+                f.seek(0)
+                json.dump(data, f, indent=2)
+            
+            return f"Note saved: {notes}"
+        
+        else:
+            # Searching notes
+            if not query:
+                return "Error: No search query provided."
+            
+            with open(notes_file, "r") as f:
+                data = json.load(f)
+            
+            results = []
+            for note in data:
+                date_match = fuzz.partial_ratio(query, note["date"])
+                content_match = fuzz.partial_ratio(query, note["content"])
+                
+                if date_match > 70 or content_match > 70:
+                    results.append(note)
+            
+            # Sort results by date and limit to 5
+            results.sort(key=lambda x: x["date"], reverse=True)
+            results = results[:5]
+            
+            if not results:
+                return "No matching notes found."
+            
+            output = "Matching notes (up to 5 most recent):\n\n"
+            for note in results:
+                date = datetime.fromisoformat(note["date"]).strftime("%Y-%m-%d %H:%M:%S")
+                output += f"Date: {date}\nContent: {note['content']}\n\n"
+            
+            return output.strip()
 
     @classmethod
     def get_available_tools(cls):
@@ -361,7 +446,7 @@ class Tools:
         """
         return [
             value for name, value in inspect.getmembers(cls, predicate=inspect.isfunction)
-            if not name.startswith('_') and name != 'get_available_tools' and name != 'call_function'
+            if not name.startswith('_') and name != 'get_available_tools' and name != 'call_function' and name != 'send_discord_message'
         ]
 
     @classmethod
