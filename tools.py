@@ -306,6 +306,51 @@ class Tools:
     #     client.run(DISCORD_BOT_TOKEN)
     #     return f"Message sent to Discord channel {channel_id}"
 
+    @staticmethod
+    def get_place_information(query: str, open_now: bool = False):
+        """
+        Perform a Place Search using the Google Maps Places API.
+        Args:
+            query (str): The text string on which to search.
+            open_now (bool): Optional. Return only places that are open for business at the time the query is sent.
+        Returns:
+            dict: A dictionary containing the search results and metadata.
+        """
+        GOOGLE_CLOUD_API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY')
+        base_url = "https://places.googleapis.com/v1/places:searchText"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_CLOUD_API_KEY,
+            "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.types,places.rating"
+        }
+        
+        data = {
+            "textQuery": query,
+            "maxResultCount": 5
+        }
+        
+        if open_now:
+            data["openNow"] = open_now
+        
+        response = requests.post(base_url, headers=headers, data=json.dumps(data))
+        
+        if response.status_code == 200:
+            result = response.json()
+            return {
+                "status": "OK",
+                "results": [
+                    {
+                        "name": place.get("displayName", {}).get("text"),
+                        "address": place.get("formattedAddress"),
+                        "types": place.get("types", []),
+                        "rating": place.get("rating")
+                    } for place in result.get("places", [])
+                ]
+            }
+        else:
+            return {"error": f"API request failed with status code {response.status_code}"}
+
     @classmethod
     def get_available_tools(cls):
         """
