@@ -12,3 +12,4 @@ output.wav
 venv/*
 voice_recordings/*
 test files/*
+user_notes.json
