@@ -17,16 +17,12 @@ load_dotenv()
 class Tools:
     
     @staticmethod
-    def get_weather(city: str, forecast_type: str = 'current', time_range: int = 3):
-        """
-        Get weather information for a specified city using OpenWeatherMap API.
+    def get_weather(city: str, forecast_type: str = 'current', time_range: int = 3) -> dict:
+        """Get weather information for a specified city using OpenWeatherMap API.
         Args:
-            city (str): The name of the city to get weather information for.
-            forecast_type (str): Type of forecast - 'current', 'hourly', or 'daily'. Default is 'current'.
-            time_range (int): Number of hours ahead for hourly forecast or days ahead for daily forecast. Default is 3.
-        Returns:
-            dict: Weather data for the specified city and forecast type.
-        """
+            city: The name of the city to get weather information for.
+            forecast_type: Type of forecast - 'current', 'hourly', or 'daily'. Default is 'current'.
+            time_range: Number of hours ahead for hourly forecast or days ahead for daily forecast. Default is 3."""
         OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
 
         # Clean data
@@ -108,14 +104,8 @@ class Tools:
             return {"error": "Invalid forecast type. Choose 'current', 'hourly', or 'daily'."}
 
     @staticmethod
-    def google_search(query: str):
-        """
-        Perform a Google search and return the top 5 results from the UK.
-        Args:
-            query (str): The search query.
-        Returns:
-            list: A list of dictionaries containing the top 5 search results.
-        """
+    def google_search(query: str) -> list:
+        """Perform a Google search and return the top 5 results from the UK."""
         api_key = os.getenv("GOOGLE_API_KEY")
         cse_id = os.getenv("GOOGLE_CSE_ID")
         service = build("customsearch", "v1", developerKey=api_key)
@@ -132,14 +122,10 @@ class Tools:
         return results
 
     @staticmethod
-    def get_news(query: str):
-        """
-        Get news articles using the NewsData.io API.
+    def get_news(query: str) -> dict:
+        """Get news articles. If no query is provided, the top news is fetched.
         Args:
-            query (str): The search query. If not provided the top news is fetched. (default: None)
-        Returns:
-            dict: A dictionary containing the news articles and metadata.
-        """
+            query: The search query. If not provided the top news is fetched."""
         NEWS_API_KEY = os.getenv('NEWS_API_KEY')
         base_url = "https://newsdata.io/api/1/latest"
         
@@ -177,17 +163,12 @@ class Tools:
             return {"error": f"API request failed with status code {response.status_code}"}
 
     @staticmethod
-    def get_directions(origin: str, destination: str, travel_mode: str = "DRIVE"):
-        """
-        Get directions between two locations using Google Maps Routes API.
+    def get_directions(origin: str, destination: str, travel_mode: str = "DRIVE") -> dict:
+        """Get directions, include time and steps, between two locations.
         Args:
-            origin (str): Starting location.
-            destination (str): Ending location.
-            include_steps (bool): Whether to include navigation steps in the output (default: False).
-            travel_mode (str): Mode of travel - "DRIVE", "WALK", "BICYCLE", or "TRANSIT" (default: "DRIVE").
-        Returns:
-            dict: Directions information including duration and distance, and optionally steps.
-        """
+            origin: Starting location.
+            destination: Ending location.
+            travel_mode: Mode of travel - "DRIVE", "WALK", "BICYCLE", or "TRANSIT" (default: "DRIVE")."""
         GOOGLE_CLOUD_API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY')
         base_url = "https://routes.googleapis.com/directions/v2:computeRoutes"
         
@@ -259,7 +240,7 @@ class Tools:
             return {"error": f"API request failed with status code {response.status_code}"}
 
     @staticmethod
-    async def send_discord_message(user_id: int, message: str):
+    async def send_discord_message(user_id: int, message: str) -> str:
         """
         Send a direct message to a Discord user asynchronously as an embed.
         Args:
@@ -294,19 +275,13 @@ class Tools:
         return f"Message sent to Discord user {user_id}"
 
     @staticmethod
-    def send_message_to_phone(user_id: str, message: str):
-        """
-        Send a text message to the user. ALWAYS include markdown formatting in this message.
+    def send_message_to_phone(user_id: str, message: str) -> str:
+        """Send a text message to the user. ALWAYS include markdown formatting in this message.
         This message can be longer than spoken messages.
         Make sure to get all required information before sending the message.
-
         Args:
-            user_id (str): The ID of the Discord user to send the message to.
-            message (str): The content of the message to be sent. Will only send anything in this field. Use Discord markdown.
-
-        Returns:
-            str: A confirmation message indicating that the message was sent.
-        """
+            user_id: The ID of the Discord user to send the message to.
+            message: The content of the message to be sent. Will only send anything in this field. Use Discord markdown."""
         loop = asyncio.get_event_loop()
         if loop.is_running():
             # If we're already in an event loop, create a new one
@@ -328,15 +303,9 @@ class Tools:
         return result
 
     @staticmethod
-    def get_place_information(query: str, open_now: bool = False):
-        """
-        Perform a Place Search using the Google Maps Places API.
-        Args:
-            query (str): The text string on which to search.
-            open_now (bool): Optional. Return only places that are open for business at the time the query is sent.
-        Returns:
-            dict: A dictionary containing the search results and metadata.
-        """
+    def get_place_information(query: str, open_now: bool = False) -> dict:
+        """Perform a Place Search using the Google Maps Places API.
+        open_now: Optional. Return only places that are open for business at the time the query is sent."""
         GOOGLE_CLOUD_API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY')
         base_url = "https://places.googleapis.com/v1/places:searchText"
         
@@ -373,16 +342,12 @@ class Tools:
             return {"error": f"API request failed with status code {response.status_code}"}
         
     @staticmethod
-    def take_notes(notes: str = None, search: bool = False, query: str = None):
-        """
-        Take notes or search existing notes.
+    def take_notes(notes: str = None, search: bool = False, query: str = None) -> str:
+        """Take notes or search existing notes.
         Args:
-            notes (str): The notes to take (if None, assumes search mode).
-            search (bool): Whether to search existing notes.
-            query (str): The search query (for text or date).
-        Returns:
-            str: Confirmation message or search results.
-        """
+            notes: The notes to take (if None, assumes search mode).
+            search: Whether to search existing notes.
+            query: The search query (for text or date (YYYY-MM-DD))."""
         notes_file = "user_notes.json"
         
         # Ensure the JSON file exists
