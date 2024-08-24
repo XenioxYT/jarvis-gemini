@@ -54,6 +54,7 @@ class GeminiAPI:
             safety_settings=safety_settings,
             tools=Tools.get_available_tools()
         )
+        # print(self.model._tools.to_proto())
 
     def test_function(self, test: bool):
         if test:
