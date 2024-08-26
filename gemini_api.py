@@ -33,7 +33,7 @@ class GeminiAPI:
 
     def _create_model(self):
         generation_config = {
-            "temperature": 1,
+            "temperature": 0.5,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 4096,
@@ -55,16 +55,6 @@ class GeminiAPI:
             tools=Tools.get_available_tools()
         )
         # print(self.model._tools.to_proto())
-
-    def test_function(self, test: bool):
-        if test:
-            return "This works"
-        else:
-            return "This does not work"
-        
-    def get_weather(self, city: str):
-        time.sleep(3)
-        return "The weather in " + city + " is " + str(random.randint(10, 30)) + " degrees celcius"
 
     def process_audio(self, audio_file, tts_engine=None):
         return self.generate_response(audio_file, input_type="audio", tts_engine=tts_engine)
@@ -194,7 +184,7 @@ class GeminiAPI:
     
 def test_gemini_api():
     gemini_api = GeminiAPI()
-    response = gemini_api.generate_response("what is fortnite?")
+    response = gemini_api.generate_response("Can you get the weather for 52 the glade?")
     print(response)
 
 if __name__ == "__main__":
