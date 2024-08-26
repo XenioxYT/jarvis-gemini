@@ -11,7 +11,6 @@ class VoiceAssistant:
         self.wake_word_detector = WakeWordDetector(self.access_key)
         self.gemini_api = GeminiAPI()
         self.tts_engine = TTSEngine()
-        self.is_speaking = False
 
     def run(self):
         print("Voice Assistant is running. Say 'Jarvis' to activate.")
@@ -25,11 +24,6 @@ class VoiceAssistant:
                 # Response is already spoken by the TTS engine in a separate thread
             else:
                 print("No audio was recorded. Listening for wake word again.")
-
-    def interrupt(self):
-        if self.is_speaking:
-            self.tts_engine.stop()
-            self.is_speaking = False
 
     def test_audio_input(self, audio_file):
         # Send audio to Gemini API
