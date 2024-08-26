@@ -10,16 +10,16 @@ import json
 from fuzzywuzzy import fuzz
 import discord
 import asyncio
+import re
 
 load_dotenv()
 
 class Tools:
-    
     @staticmethod
-    def get_weather(city: str, forecast_type: str = 'current', time_range: int = 3) -> dict:
-        """Get weather information for a specified city using OpenWeatherMap API.
+    def get_weather(location: str, forecast_type: str = 'current', time_range: int = 3) -> dict:
+        """Get weather information for a specified location using OpenWeatherMap API.
         Args:
-            city: The name of the city to get weather information for.
+            location: The name of the location/postcode to get weather information for.
             forecast_type: Type of forecast - 'current', 'hourly', or 'daily'. Default is 'current'.
             time_range: Number of hours ahead for hourly forecast or days ahead for daily forecast. Default is 3."""
         OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
@@ -27,7 +27,7 @@ class Tools:
             return {"error": "OpenWeather API key not found"}
 
         # Clean data
-        city = city.strip()
+        location = location.strip()
         forecast_type = forecast_type.strip().lower()
         try:
             time_range = int(time_range)
@@ -36,22 +36,48 @@ class Tools:
 
         if forecast_type not in ['current', 'hourly', 'daily']:
             return {"error": "Invalid forecast type. Choose 'current', 'hourly', or 'daily'."}
-
+        country_code = "GB"
         # Step 1: Geocoding API to get coordinates
-        geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={city}&limit=1&appid={OPENWEATHER_API_KEY}"
+        geocoding_url = f"http://api.openweathermap.org/geo/1.0/direct?q={location},{country_code}&limit=1&appid={OPENWEATHER_API_KEY}"
         try:
             geocoding_response = requests.get(geocoding_url)
             geocoding_response.raise_for_status()
             geocoding_data = geocoding_response.json()
+            address = location
         except requests.RequestException as e:
             return {"error": f"Geocoding API request failed: {str(e)}"}
 
         if not geocoding_data:
-            return {"error": "City not found"}
+            # Try using Google Maps Places API if location not found
+            place_info = Tools.get_place_information(location)
+            if place_info.get("status") == "OK" and place_info.get("results"):
+                address = place_info["results"][0].get("address")
+                if not address:
+                    return {"error": "Address not found in place information"}
+                
+                # Extract postcode using regex
+                match = re.search(r'\b[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}\b', address)
+                if not match:
+                    return {"error": "Postcode not found in address"}
+                
+                postcode = match.group(0)
+                geocoding_url = f"http://api.openweathermap.org/geo/1.0/zip?zip={postcode},{country_code}&appid={OPENWEATHER_API_KEY}"
+                try:
+                    geocoding_response = requests.get(geocoding_url)
+                    geocoding_response.raise_for_status()
+                    geocoding_data = geocoding_response.json()
+                except requests.RequestException as e:
+                    return {"error": f"Geocoding API request failed: {str(e)}"}
+            else:
+                return {"error": "location not found"}
 
         try:
-            lat = geocoding_data[0]['lat']
-            lon = geocoding_data[0]['lon']
+            if 'zip' in geocoding_data:
+                lat = geocoding_data['lat']
+                lon = geocoding_data['lon']
+            else:
+                lat = geocoding_data[0]['lat']
+                lon = geocoding_data[0]['lon']
         except (IndexError, KeyError):
             return {"error": "Invalid response from Geocoding API"}
 
@@ -76,7 +102,7 @@ class Tools:
         if forecast_type == 'current':
             current_weather = weather_data.get('current', {})
             return {
-                "city": city,
+                "location": address,
                 "temperature": current_weather.get('temp'),
                 "feels_like": current_weather.get('feels_like'),
                 "humidity": current_weather.get('humidity'),
@@ -87,7 +113,7 @@ class Tools:
         elif forecast_type == 'hourly':
             hourly_forecast = weather_data.get('hourly', [])[:time_range]
             return {
-                "city": city,
+                "location": address,
                 "hourly_forecast": [
                     {
                         "time": datetime.fromtimestamp(hour['dt']).strftime('%Y-%m-%d %H:%M:%S'),
@@ -103,7 +129,7 @@ class Tools:
         elif forecast_type == 'daily':
             daily_forecast = weather_data.get('daily', [])[:time_range]
             return {
-                "city": city,
+                "location": address,
                 "daily_forecast": [
                     {
                         "date": datetime.fromtimestamp(day['dt']).strftime('%Y-%m-%d'),
