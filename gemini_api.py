@@ -33,7 +33,7 @@ class GeminiAPI:
 
     def _create_model(self):
         generation_config = {
-            "temperature": 0.5,
+            "temperature": 1,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 4096,
@@ -45,6 +45,7 @@ class GeminiAPI:
             HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
             HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+            # HarmCategory.HARM_CATEGORY_CIVIC_INTEGRITY: HarmBlockThreshold.BLOCK_NONE,
         }
 
         self.model = genai.GenerativeModel(
@@ -70,12 +71,18 @@ class GeminiAPI:
         else:
             history = []
 
-        # Trim history to keep only the last 20 messages (or less if there aren't 20 yet)
-        if len(history) > self.max_history_length:
-            history = history[-self.max_history_length:]
+        # Trim history while ensuring it starts with a user or model message
+        trimmed_history = []
+        for message in reversed(history):
+            if not trimmed_history or 'function_response' not in message.parts[0]:
+                trimmed_history.insert(0, message)
+                if len(trimmed_history) >= self.max_history_length:
+                    break
+            elif trimmed_history:
+                trimmed_history.insert(0, message)
 
         # Start chat session with system prompt and trimmed history
-        chat_session = self.model.start_chat(history=history)
+        chat_session = self.model.start_chat(history=trimmed_history)
 
         # Prepare input based on type
         if input_type == "audio":
@@ -105,7 +112,6 @@ class GeminiAPI:
                     break  # Break out of the retry loop if successful
                 except Exception as e:
                     print(f"Error generating response during retry {retry + 1}: {str(e)}")
-            
             else:  # Execute if the loop completes without breaking
                 print("Max retries reached. Setting response to 'there was an error'.")
                 response = genai.protos.ChatResponse(
@@ -178,13 +184,13 @@ class GeminiAPI:
 
         # Save updated history using chat_session.history
         with open(self.history_file, 'wb') as f:
-            pickle.dump(chat_session.history[-self.max_history_length:], f)
+            pickle.dump(chat_session.history, f)
 
         return chat_local_history
     
 def test_gemini_api():
     gemini_api = GeminiAPI()
-    response = gemini_api.generate_response("Can you get the weather for 52 the glade?")
+    response = gemini_api.generate_response("Try a different location, maybe a city?")
     print(response)
 
 if __name__ == "__main__":
