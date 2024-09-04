@@ -9,20 +9,17 @@ This project is an advanced AI voice assistant powered by Google's Gemini langua
 - Natural language understanding and generation using Gemini AI
 - Text-to-speech output
 - Conversation history management
-
-## Upcoming Features
-
 - Integration with various tools:
   - Setting timers and alarms
-  - Calendar management
-  - Weather information retrieval
-  - News fetching
-  - Smart home device control
+  - Calendar management (Google Calendar API)
+  - Weather information retrieval (OpenWeatherMap API)
+  - News fetching (Google News API)
+  - Smart home device control (Home Assistant API)
   - To-do list and reminder management
-  - Web search functionality
+  - Web search functionality (Google Search API)
   - Message and email sending
   - Music and podcast playback
-  - Directions and traffic information
+  - Directions and traffic information (Google Maps API)
   - Flight status checking
   - Phone messaging via Discord API
 
@@ -60,6 +57,9 @@ This project is an advanced AI voice assistant powered by Google's Gemini langua
    GOOGLE_API_KEY=your_google_api_key
    GOOGLE_CSE_ID=your_google_cse_id
    OPENWEATHER_API_KEY=your_openweather_api_key
+   GOOGLE_CLOUD_API_KEY=your_google_cloud_api_key
+   NEWS_API_KEY=your_news_api_key
+   DISCORD_BOT_TOKEN=your_discord_bot_token
    ```
 
 5. Ensure you have the necessary credentials file for Google Cloud services.
@@ -83,6 +83,15 @@ The assistant will listen for the wake word "Jarvis". Once detected, it will rec
 - `tts_engine.py`: Handles text-to-speech conversion and audio playback.
 - `tools.py`: Contains various tool functions for extended functionality.
 - `prompt.py`: Defines the system prompt for the AI assistant.
+- `function_tools/`: Directory containing individual tool implementations:
+  - `weather.py`: Retrieves weather information.
+  - `google_search.py`: Performs web searches.
+  - `news.py`: Fetches news articles.
+  - `directions.py`: Provides directions and traffic information.
+  - `discord_message.py`: Sends messages via Discord.
+  - `phone_message.py`: Sends messages to phones.
+  - `place_info.py`: Retrieves information about places.
+  - `take_notes.py`: Manages note-taking functionality.
 
 ## Contributing
 
