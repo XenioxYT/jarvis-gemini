@@ -13,3 +13,13 @@ venv/*
 voice_recordings/*
 test files/*
 user_notes.json
+function_tools/__pycache__/directions.cpython-310.pyc
+function_tools/__pycache__/discord_message.cpython-310.pyc
+function_tools/__pycache__/google_search.cpython-310.pyc
+function_tools/__pycache__/news.cpython-310.pyc
+function_tools/__pycache__/notes.cpython-310.pyc
+function_tools/__pycache__/phone_message.cpython-310.pyc
+function_tools/__pycache__/place_info.cpython-310.pyc
+function_tools/__pycache__/take_notes.cpython-310.pyc
+function_tools/__pycache__/weather.cpython-310.pyc
+speech.mp3
