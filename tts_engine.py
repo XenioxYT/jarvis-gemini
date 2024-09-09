@@ -6,6 +6,8 @@ import os
 import uuid
 from google.cloud import texttospeech
 from datetime import datetime
+from pathlib import Path
+from openai import OpenAI
 
 class TTSEngine:
     def __init__(self):
@@ -26,6 +28,13 @@ class TTSEngine:
         self.temp_dir = "temp_audio"
         os.makedirs(self.temp_dir, exist_ok=True)
         print("TTSEngine initialized.")
+        self.notification_sound = pygame.mixer.Sound("reminder_sound.mp3")
+
+        # Initialize OpenAI client
+        self.openai_client = OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY_DIFF'),
+            base_url="https://api.naga.ac/v1"
+        )
 
     def speak(self, text):
         if isinstance(text, str) and text.strip():
@@ -33,10 +42,25 @@ class TTSEngine:
         else:
             print("Error: Invalid or empty text input for TTS.")
 
+    def speak_openai(self, text):
+        if isinstance(text, str) and text.strip():
+            self.generation_queue.put((text, True))  # True indicates OpenAI TTS
+        else:
+            print("Error: Invalid or empty text input for TTS.")
+
     def _process_generation_queue(self):
         while True:
-            text = self.generation_queue.get()
-            audio_file = self._generate_audio(text)
+            item = self.generation_queue.get()
+            if isinstance(item, tuple):
+                text, use_openai = item
+            else:
+                text, use_openai = item, False
+            
+            if use_openai:
+                audio_file = self._generate_audio_openai(text)
+            else:
+                audio_file = self._generate_audio(text)
+            
             self.play_queue.put((audio_file, text))
             self.generation_queue.task_done()
 
@@ -44,10 +68,20 @@ class TTSEngine:
         while True:
             audio_file, text = self.play_queue.get()
             self.is_speaking = True
-            success = self._play_audio(audio_file, text)
+            
+            # Wait for any ongoing playback to finish
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
+            
+            if audio_file is None:  # Reminder response
+                self._play_notification_sound()
+                success = self._play_audio(self._generate_audio(text), text)
+            else:  # Regular response
+                success = self._play_audio(audio_file, text)
+            
             self.is_speaking = False
             self.play_queue.task_done()
-            if success:
+            if success and audio_file is not None:
                 pass
                 # os.remove(audio_file)  # Clean up the temporary file
 
@@ -64,18 +98,17 @@ class TTSEngine:
         # Build the voice request
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-GB",
-            name="en-GB-Neural2-A"
+            name="en-GB-Neural2-B"
         )
 
         # Select the type of audio file you want returned
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
-            speaking_rate=1.10,
+            speaking_rate=1.05,
+            pitch=0.0,
+            # effects_profile_id=["headphone-class-device"],
+            sample_rate_hertz=24000
         )
-
-        # Add SSML tags for a cheerful tone
-        # ssml_text = f'<speak><prosody rate="1.15" pitch="+2st">{text}</prosody></speak>'
-        # synthesis_input = texttospeech.SynthesisInput(ssml=ssml_text)
 
         try:
             response = self.client.synthesize_speech(
@@ -89,6 +122,26 @@ class TTSEngine:
             return filename
         except Exception as e:
             print(f"An error occurred during speech synthesis: {str(e)}")
+            return None
+
+    def _generate_audio_openai(self, text):
+        print(f"Converting text to speech using OpenAI: '{text}'")
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = os.path.join(self.temp_dir, f"{timestamp}_openai.mp3")
+        
+        try:
+            response = self.openai_client.audio.speech.create(
+                model="eleven-turbo-v2",
+                voice="Alice",  # You can change this or make it configurable
+                input=text,
+                speed=1.10
+            )
+            response.stream_to_file(filename)
+            print(f"OpenAI speech synthesized and saved to {filename}")
+            return filename
+        except Exception as e:
+            print(f"An error occurred during OpenAI speech synthesis: {str(e)}")
             return None
 
     def _play_audio(self, audio_file, text, retry_count=0):
@@ -115,6 +168,14 @@ class TTSEngine:
             else:
                 print("Max retry limit reached. Skipping this response.")
                 return False
+
+    def _play_notification_sound(self):
+        """Play the notification sound."""
+        self.notification_sound.play()
+
+    def queue_reminder_response(self, response: str) -> None:
+        """Queue a reminder response to be read out after the current TTS queue."""
+        self.play_queue.put((None, response))  # Use None for audio_file to indicate a reminder response
 
     def stop(self):
         print("Stopping audio playback...")

@@ -49,7 +49,7 @@ class GeminiAPI:
         }
 
         self.model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-1.5-flash-exp-0827",
             generation_config=generation_config,
             system_instruction=self.system_prompt,
             safety_settings=safety_settings,
@@ -152,7 +152,7 @@ class GeminiAPI:
                     cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
                     
                     print(cleaned_text)
-                    threading.Thread(target=tts_engine.speak, args=(cleaned_text,)).start()
+                    threading.Thread(target=tts_engine.speak_openai, args=(cleaned_text,)).start()
                     
             elif hasattr(part, 'function_call'):
                 fn = part.function_call
@@ -187,6 +187,13 @@ class GeminiAPI:
             pickle.dump(chat_session.history, f)
 
         return chat_local_history
+
+    def generate_reminder_response(self, reminder: dict) -> str:
+        """Generate a response for the given reminder."""
+        name = reminder["name"]
+        response = f"Reminder: {name}"
+        #TODO: Add any additional logic to generate a more detailed response if needed
+        return response
     
 def test_gemini_api():
     gemini_api = GeminiAPI()
