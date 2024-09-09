@@ -26,10 +26,10 @@ class WakeWordDetector:
                     print("Wake word detected!")
                     self.recorder.stop()
                     # Add a short delay to allow the user to speak
-                    time.sleep(0.2)
+                    time.sleep(0.1)
                     
                     # Hand off to audio recorder
-                    wav_file = self.audio_recorder.record(silence_duration=1.0)
+                    wav_file = self.audio_recorder.record(silence_duration=1.5)
                     
                     if wav_file:
                         print(f"Recording saved as {wav_file}")
