@@ -33,7 +33,7 @@ class GeminiAPI:
 
     def _create_model(self):
         generation_config = {
-            "temperature": 1,
+            "temperature": 0.75,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 4096,
@@ -187,6 +187,13 @@ class GeminiAPI:
             pickle.dump(chat_session.history, f)
 
         return chat_local_history
+
+    def generate_reminder_response(self, reminder: dict) -> str:
+        """Generate a response for the given reminder."""
+        name = reminder["name"]
+        response = f"Reminder: {name}"
+        #TODO: Add any additional logic to generate a more detailed response if needed
+        return response
     
 def test_gemini_api():
     gemini_api = GeminiAPI()
