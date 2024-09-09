@@ -45,24 +45,38 @@ import time
 
 # Test TTS engine
 
-from tts_engine import TTSEngine
+# from tts_engine import TTSEngine
 
-def test_tts_engine():
-    tts = TTSEngine()
-    print("TTS Engine Test")
-    print("Enter text to convert to speech. Type 'exit' to quit.")
+# def test_tts_engine():
+#     tts = TTSEngine()
+#     print("TTS Engine Test")
+#     print("Enter text to convert to speech. Type 'exit' to quit.")
     
-    while True:
-        user_input = input("Enter text: ").strip()
-        if user_input.lower() == 'exit':
-            break
-        if user_input:
-            tts.speak(user_input)
-        else:
-            print("Please enter some text.")
+#     while True:
+#         user_input = input("Enter text: ").strip()
+#         if user_input.lower() == 'exit':
+#             break
+#         if user_input:
+#             tts.speak(user_input)
+#         else:
+#             print("Please enter some text.")
     
-    print("Test completed.")
+#     print("Test completed.")
 
-# Run the test function
-test_tts_engine()
+# # Run the test function
+# test_tts_engine()
 
+from pathlib import Path
+from openai import OpenAI
+client = OpenAI()
+
+speech_file_path = Path(__file__).parent / "speech.mp3"
+voices = ['Alice', 'George', 'Lily']
+
+response = client.audio.speech.create(
+    model="eleven-turbo-v2",
+    voice="Alice",
+    input="Today is a wonderful day to build something people love!"
+)
+voice_file_path = Path(__file__).parent / f"speech.mp3"
+response.stream_to_file(voice_file_path)
