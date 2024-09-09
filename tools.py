@@ -1,6 +1,7 @@
-
 import inspect
 from function_tools import weather, google_search, news, directions, discord_message, phone_message, place_info, take_notes
+import json
+from datetime import datetime
 
 class Tools:
     
@@ -60,6 +61,36 @@ class Tools:
             query: The search query (for text or date (YYYY-MM-DD))."""
         return take_notes.take_notes(notes, search, query)
 
+    @staticmethod
+    def set_reminder(name: str, timestamp: float) -> None:
+        """Set a reminder with the given name and timestamp."""
+        reminder = {
+            "name": name,
+            "created_at": datetime.now().timestamp(),
+            "reminder_at": timestamp
+        }
+        
+        try:
+            with open("reminders.json", "r") as f:
+                reminders = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            reminders = []
+        
+        reminders.append(reminder)
+        
+        with open("reminders.json", "w") as f:
+            json.dump(reminders, f)
+    
+    @staticmethod
+    def get_reminders() -> list:
+        """Get a list of all reminders."""
+        try:
+            with open("reminders.json", "r") as f:
+                reminders = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            reminders = []
+        
+        return reminders
     @classmethod
     def get_available_tools(cls):
         """
