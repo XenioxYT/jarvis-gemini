@@ -26,6 +26,7 @@ class TTSEngine:
         self.temp_dir = "temp_audio"
         os.makedirs(self.temp_dir, exist_ok=True)
         print("TTSEngine initialized.")
+        self.notification_sound = pygame.mixer.Sound("reminder_sound.mp3")
 
     def speak(self, text):
         if isinstance(text, str) and text.strip():
@@ -44,10 +45,20 @@ class TTSEngine:
         while True:
             audio_file, text = self.play_queue.get()
             self.is_speaking = True
-            success = self._play_audio(audio_file, text)
+            
+            # Wait for any ongoing playback to finish
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
+            
+            if audio_file is None:  # Reminder response
+                self._play_notification_sound()
+                success = self._play_audio(self._generate_audio(text), text)
+            else:  # Regular response
+                success = self._play_audio(audio_file, text)
+            
             self.is_speaking = False
             self.play_queue.task_done()
-            if success:
+            if success and audio_file is not None:
                 pass
                 # os.remove(audio_file)  # Clean up the temporary file
 
@@ -64,7 +75,7 @@ class TTSEngine:
         # Build the voice request
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-GB",
-            name="en-GB-Neural2-A"
+            name="en-GB-Neural2-B"
         )
 
         # Select the type of audio file you want returned
@@ -115,6 +126,14 @@ class TTSEngine:
             else:
                 print("Max retry limit reached. Skipping this response.")
                 return False
+
+    def _play_notification_sound(self):
+        """Play the notification sound."""
+        self.notification_sound.play()
+
+    def queue_reminder_response(self, response: str) -> None:
+        """Queue a reminder response to be read out after the current TTS queue."""
+        self.play_queue.put((None, response))  # Use None for audio_file to indicate a reminder response
 
     def stop(self):
         print("Stopping audio playback...")
