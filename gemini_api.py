@@ -33,7 +33,7 @@ class GeminiAPI:
 
     def _create_model(self):
         generation_config = {
-            "temperature": 0.75,
+            "temperature": 1,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 4096,
@@ -49,7 +49,7 @@ class GeminiAPI:
         }
 
         self.model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-1.5-flash-exp-0827",
             generation_config=generation_config,
             system_instruction=self.system_prompt,
             safety_settings=safety_settings,
@@ -152,7 +152,7 @@ class GeminiAPI:
                     cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
                     
                     print(cleaned_text)
-                    threading.Thread(target=tts_engine.speak, args=(cleaned_text,)).start()
+                    threading.Thread(target=tts_engine.speak_openai, args=(cleaned_text,)).start()
                     
             elif hasattr(part, 'function_call'):
                 fn = part.function_call
