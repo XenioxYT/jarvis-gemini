@@ -5,6 +5,7 @@ from datetime import datetime
 import struct
 from dotenv import load_dotenv
 import os
+import time
 
 class AudioRecorder:
     def __init__(self, access_key):
@@ -14,8 +15,8 @@ class AudioRecorder:
         self.channels = 1
         self.sample_width = 2  # 16-bit audio
 
-    def record(self, silence_duration=0.5):
-        print("Recording... Speak now.")
+    def record(self, silence_duration=0.5, wait_for_speech=False, timeout=2.0):
+        print("Listening for follow-up..." if wait_for_speech else "Recording... Speak now.")
         
         self.recorder.start()
 
@@ -23,11 +24,23 @@ class AudioRecorder:
         voice_probability_threshold = 0.5
         silent_frames = 0
         max_silent_frames = int(silence_duration * self.rate / self.cobra.frame_length)
+        speech_detected = not wait_for_speech
+        start_time = time.time()
         
         try:
             while True:
                 pcm = self.recorder.read()
                 voice_probability = self.cobra.process(pcm)
+                
+                if wait_for_speech and not speech_detected:
+                    if voice_probability >= voice_probability_threshold:
+                        speech_detected = True
+                        print("Speech detected, recording...")
+                    elif time.time() - start_time > timeout:
+                        print("No speech detected within timeout.")
+                        return None
+                    else:
+                        continue
                 
                 frames.extend(pcm)
                 
@@ -36,13 +49,11 @@ class AudioRecorder:
                 else:
                     silent_frames += 1
                 
-                if silent_frames >= max_silent_frames:
+                if silent_frames >= max_silent_frames and speech_detected:
                     break
                 
         finally:
             self.recorder.stop()
-
-        print("Finished recording.")
 
         if not frames:
             print("No speech detected.")
