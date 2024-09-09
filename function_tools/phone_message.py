@@ -10,7 +10,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def send_message_to_phone(user_id: str, message: str) -> str:
     try:
-        user_id_int = 123
+        user_id_int = os.getenv("DISCORD_PHONE_USER_ID")
         # user_id_int = int(user_id)
     except ValueError:
         return "Error: Invalid user ID. Must be an integer."

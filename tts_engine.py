@@ -133,7 +133,7 @@ class TTSEngine:
         try:
             response = self.openai_client.audio.speech.create(
                 model="eleven-turbo-v2",
-                voice="Alice",  # You can change this or make it configurable
+                voice="Lily",  # You can change this or make it configurable
                 input=text,
                 speed=1.10
             )
