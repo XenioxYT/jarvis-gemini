@@ -2,6 +2,7 @@ import pvporcupine
 import pvrecorder
 import time
 from audio_recorder import AudioRecorder
+import pygame
 
 class WakeWordDetector:
     def __init__(self, access_key):
@@ -23,6 +24,8 @@ class WakeWordDetector:
                 keyword_index = self.porcupine.process(pcm)
                 
                 if keyword_index >= 0:
+                    # Stop the playback
+                    pygame.mixer.music.stop()
                     print("Wake word detected!")
                     self.recorder.stop()
                     # Add a short delay to allow the user to speak
