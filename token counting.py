@@ -1,6 +1,7 @@
 # Testing tools
 from tools import Tools
 import time
+from datetime import datetime, timedelta
 
 # print (Tools.get_news(headlines_only=True))
 
@@ -17,31 +18,27 @@ import time
 # print(Tools.send_message_to_phone("1234", "I am testing the send message to phone tool"))
 
 # Set a reminder for 5 minutes from now
-# reminder_name = "Take a break"
-# reminder_time = time.time() + 10  # Current time + 300 seconds (5 minutes)
+reminder_name = "Take a break"
+reminder_time = (datetime.now() + timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
 
-# Tools.set_reminder(reminder_name, reminder_time)
+Tools.set_reminder(reminder_name, reminder_time)
 
-# print(f"Reminder '{reminder_name}' set for {time.ctime(reminder_time)}")
+print(f"Reminder '{reminder_name}' set for {reminder_time}")
 
-# # You can also set a reminder for a specific time
-# from datetime import datetime, timedelta
+# Set a reminder for tomorrow at 9:00 AM
+tomorrow_9am = (datetime.now().replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+reminder_name = "Morning meeting"
 
-# # Set a reminder for tomorrow at 9:00 AM
-# tomorrow_9am = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0) + timedelta(days=1)
-# reminder_name = "Morning meeting"
-# reminder_time = tomorrow_9am.timestamp()
+Tools.set_reminder(reminder_name, tomorrow_9am)
 
-# Tools.set_reminder(reminder_name, reminder_time)
+print(f"Reminder '{reminder_name}' set for {tomorrow_9am}")
 
-# print(f"Reminder '{reminder_name}' set for {tomorrow_9am.strftime('%Y-%m-%d %H:%M:%S')}")
-
-# # Print all current reminders
-# current_reminders = Tools.get_reminders()
-# print("\nCurrent reminders:")
-# for reminder in current_reminders:
-#     print(f"- {reminder['name']} at {time.ctime(reminder['reminder_at'])}")
-
+# Print all current reminders
+current_reminders = Tools.get_reminders()
+print("\nCurrent reminders:")
+for reminder in current_reminders:
+    reminder_time = datetime.fromtimestamp(reminder['reminder_at']).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"- {reminder['name']} at {reminder_time}")
 
 # Test TTS engine
 
@@ -66,17 +63,17 @@ import time
 # # Run the test function
 # test_tts_engine()
 
-from pathlib import Path
-from openai import OpenAI
-client = OpenAI()
+# from pathlib import Path
+# from openai import OpenAI
+# client = OpenAI()
 
-speech_file_path = Path(__file__).parent / "speech.mp3"
-voices = ['Alice', 'George', 'Lily']
+# speech_file_path = Path(__file__).parent / "speech.mp3"
+# voices = ['Alice', 'George', 'Lily']
 
-response = client.audio.speech.create(
-    model="eleven-turbo-v2",
-    voice="Alice",
-    input="Today is a wonderful day to build something people love!"
-)
-voice_file_path = Path(__file__).parent / f"speech.mp3"
-response.stream_to_file(voice_file_path)
+# response = client.audio.speech.create(
+#     model="eleven-turbo-v2",
+#     voice="Alice",
+#     input="Today is a wonderful day to build something people love!"
+# )
+# voice_file_path = Path(__file__).parent / f"speech.mp3"
+# response.stream_to_file(voice_file_path)
