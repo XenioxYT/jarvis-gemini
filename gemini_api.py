@@ -75,12 +75,19 @@ class GeminiAPI:
         # Trim history while ensuring it starts with a user or model message
         trimmed_history = []
         for message in reversed(history):
-            if not trimmed_history or 'function_response' not in message.parts[0]:
+            if not trimmed_history or message.role == "user" or 'function_response' in message.parts[0]:
                 trimmed_history.insert(0, message)
                 if len(trimmed_history) >= self.max_history_length:
                     break
-            elif trimmed_history:
-                trimmed_history.insert(0, message)
+
+        # Ensure the last turn is a user turn
+        if trimmed_history and trimmed_history[-1].role == "model":
+            trimmed_history.pop()
+
+        # Debugging output to check the trimmed history
+        print("Trimmed History:")
+        for msg in trimmed_history:
+            print(msg)
 
         # Start chat session with system prompt and trimmed history
         chat_session = self.model.start_chat(history=trimmed_history)
