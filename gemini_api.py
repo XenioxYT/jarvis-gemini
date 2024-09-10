@@ -1,3 +1,4 @@
+import datetime
 import os
 import json
 import pathlib
@@ -49,7 +50,7 @@ class GeminiAPI:
         }
 
         self.model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-exp-0827",
+            model_name="gemini-1.5-flash",
             generation_config=generation_config,
             system_instruction=self.system_prompt,
             safety_settings=safety_settings,
@@ -87,10 +88,11 @@ class GeminiAPI:
         # Prepare input based on type
         if input_type == "audio":
             content = [
+                "Current date and time: " + datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 {
                     "mime_type": "audio/wav",
                     "data": pathlib.Path(input_data).read_bytes()
-                }
+                },
             ]
         else:
             content = input_data
@@ -113,11 +115,7 @@ class GeminiAPI:
                 except Exception as e:
                     print(f"Error generating response during retry {retry + 1}: {str(e)}")
             else:  # Execute if the loop completes without breaking
-                print("Max retries reached. Setting response to 'there was an error'.")
-                response = genai.protos.ChatResponse(
-                    parts=[genai.protos.Part(text="It seems there was an error, please try again later.")]
-                )
-                total_tokens = 0
+                print("Max retries reached.")
 
         print("_" * 100)
         print(f"Total token count: {total_tokens}")
@@ -127,32 +125,34 @@ class GeminiAPI:
 
         def process_part(part):
             if part.text:
-                chat_local_history.append(part.text.strip())
-                
-                # Send the text to the TTS engine in a separate thread
-                if tts_engine:
-                    # Remove symbols that TTS would read out as full characters
-                    cleaned_text = part.text.strip()
-                    for symbol in ['*', '#', '@', '^', '~', '`', '|']:
-                        cleaned_text = cleaned_text.replace(symbol, '')
+                # Remove newlines, then strip whitespace
+                cleaned_text = part.text.replace('\n', '').strip()
+                if cleaned_text:
+                    chat_local_history.append(cleaned_text)
                     
-                    # Remove emojis
-                    import re
-                    emoji_pattern = re.compile("["
-                        u"\U0001F600-\U0001F64F"  # emoticons
-                        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                        u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                        u"\U00002702-\U000027B0"
-                        u"\U000024C2-\U0001F251"
-                        "]+", flags=re.UNICODE)
-                    cleaned_text = emoji_pattern.sub(r'', cleaned_text)
-                    
-                    # Remove extra whitespace
-                    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
-                    
-                    print(cleaned_text)
-                    threading.Thread(target=tts_engine.speak_openai, args=(cleaned_text,)).start()
+                    # Send the text to the TTS engine in a separate thread
+                    if tts_engine:
+                        # Remove symbols that TTS would read out as full characters
+                        for symbol in ['*', '#', '@', '^', '~', '`', '|']:
+                            cleaned_text = cleaned_text.replace(symbol, '')
+                        
+                        # Remove emojis
+                        import re
+                        emoji_pattern = re.compile("["
+                            u"\U0001F600-\U0001F64F"  # emoticons
+                            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                            u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                            u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                            u"\U00002702-\U000027B0"
+                            u"\U000024C2-\U0001F251"
+                            "]+", flags=re.UNICODE)
+                        cleaned_text = emoji_pattern.sub(r'', cleaned_text)
+                        
+                        # Remove extra whitespace
+                        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+                        
+                        print(cleaned_text)
+                        threading.Thread(target=tts_engine.speak_openai, args=(cleaned_text,)).start()
                     
             elif hasattr(part, 'function_call'):
                 fn = part.function_call
