@@ -23,3 +23,6 @@ function_tools/__pycache__/place_info.cpython-310.pyc
 function_tools/__pycache__/take_notes.cpython-310.pyc
 function_tools/__pycache__/weather.cpython-310.pyc
 speech.mp3
+function_tools/__pycache__/reminders.cpython-310.pyc
+function_tools/__pycache__/spotify.cpython-310.pyc
+function_tools/templates/index.html
