@@ -33,7 +33,7 @@ class TTSEngine:
         # Initialize OpenAI client
         self.openai_client = OpenAI(
             api_key=os.getenv('OPENAI_API_KEY_DIFF'),
-            base_url="https://api.naga.ac/v1"
+            base_url=os.getenv('OPENAI_API_URL_DIFF')
         )
 
     def speak(self, text):
@@ -158,6 +158,7 @@ class TTSEngine:
             while pygame.mixer.music.get_busy():
                 time.sleep(0.1)
             print("Finished playing audio.")
+            
             return True
         except pygame.error as e:
             print(f"Error playing audio: {e}")
